@@ -145,7 +145,8 @@ def learning(clf, x_train, y_train, x_val, y_val, preprocessor, selector, x_test
 
     x_train, x_val = preprocessor.preprocess_data_cross_val(x_train, x_val)
 
-    x_train, x_val = selector.select_data_cross_val(x_train, y_train, x_val, keyword = 'logistic_regression')
+    selector.set_features_and_labels(x_train, y_train)
+    x_train, x_val = selector.select_data_cross_val(x_val, keyword = 'svm')
 
     x_train, y_train = smote_balancing(x_train, y_train)
 
@@ -196,8 +197,8 @@ def test_data(x_test, y_test, preprocessor, selector, clf):
 
 def main():
 
-    # for learning_rate in np.arange(1, 10, 1):
-    #     print(learning_rate)
+    # for var in np.arange(1, 30, 1):
+    #     print(var)
 
     train_dataloader = Dataloader(feature_path='/home/smriti/Downloads/csv_files/duke_mri_with_pcr_train_white.csv')
 
@@ -231,8 +232,8 @@ def main():
         # fold_name_features = fold_name+'_selected_features'
         # fold_stats[fold_name_features] = feature_indices
         
-        clf = xgboost(n_estimators=8, learning_rate=0.14, max_depth=1)
-        # clf = random_forest(n_estimators=5, criterion='gini', max_depth=5, class_weight=None)
+        # clf = xgboost(n_estimators=8, learning_rate=0.14, max_depth=1)
+        clf = random_forest(n_estimators=5, criterion='gini', max_depth=5, class_weight=None)
         clf_summary, clf = learning(clf, x_train, y_train, x_val, y_val, preprocessor, selector, x_test=None)
         fold_stats[fold_name] = clf_summary
             

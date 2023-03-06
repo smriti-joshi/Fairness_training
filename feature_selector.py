@@ -1,30 +1,64 @@
 from sklearn.svm import LinearSVC
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import ExtraTreesClassifier
 from sklearn.feature_selection import SelectFromModel
 import pandas as pd
 
 class FeatureSelector:
     def __init__(self) -> None:
        self.model = None
+       self.features = None
+       self.labels = None
 
-    def logistic_regression_train(self, x_train, y_train):
-        lsvc = LinearSVC(C=0.01, penalty="l1", dual=False).fit(x_train, y_train)
-        self.model = SelectFromModel(lsvc, prefit=True)
-        x_new = self.model.transform(x_train)
+    def set_features_and_labels(self, features, labels):
+        self.features = features
+        self.labels = labels
+
+    def logistic_regression(self):
+        clf = LogisticRegression().fit(self.features, self.labels)
+        return clf
+  
+    def extra_trees(self):
+        clf = ExtraTreesClassifier(n_estimators=50).fit(self.features, self.labels)
+        return clf
+      
+    def svc(self):
+        clf = LinearSVC(C=0.01, penalty="l1", dual=False).fit(self.features, self.labels)
+        return clf
+
+    def select_train(self, keyword):
+        if keyword == 'logistic_regression':
+            clf = self.logistic_regression()
+        elif keyword == 'extra_trees':
+             clf= self.extra_trees()
+        elif keyword == 'svm':
+            clf = self.svc()
+        else:
+            print(keyword, ' feature selection method does not exist!')
+
+        self.model = SelectFromModel(clf, prefit=True)
+        x_new = self.model.transform(self.features)
         return x_new
     
-    def select_val(self, x_val):
-        df = pd.DataFrame(x_val)
+    def select_val(self, features_val):
+        df = pd.DataFrame(features_val)
         return df.iloc[:, self.model.get_support(indices=True)].to_numpy()
     
-    def select_data_cross_val(self, x_train, y_train,  x_val, keyword):
+    def select_data_cross_val(self, features_val, keyword):
 
-        if keyword == 'logistic_regression':
-           x_train = self.logistic_regression_train(x_train, y_train)
+        x_train = self.select_train(keyword)
 
         if self.model is not None:
-            x_val = self.select_val(x_val)
+            x_val = self.select_val(features_val)
 
         return x_train, x_val
+    
+
+
+
+
+
+
 # def lasso(x_train, y_train, x_val, x_test=None, n_fold=5, max_iters=50, thr=0.5):
 #     from sklearn.linear_model import LassoCV
 #     from sklearn.feature_selection import SelectFromModel
