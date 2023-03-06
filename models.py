@@ -1,7 +1,10 @@
-class Model:
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.ensemble import RandomForestClassifier
+
+# class Model:
      
-     def __init__(self, keyword):
-          pass
+#      def __init__(self, keyword):
+#           pass
 
 def random_forest(n_estimators=10, criterion='gini', max_depth=5, class_weight=None):
     '''

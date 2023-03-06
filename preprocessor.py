@@ -36,3 +36,8 @@ class Preprocessor:
         df = pd.DataFrame(features)
         df.drop(self.drop, axis=1, inplace=True)
         return df.iloc[:, self.high_variance_selector.get_support(indices=True)].to_numpy()
+    
+    def preprocess_data_cross_val(self, features_train, features_val):
+        features_train = self.preprocess_train(features_train)
+        features_val = self.preprocess_val(features_val)
+        return features_train, features_val

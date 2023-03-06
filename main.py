@@ -6,14 +6,14 @@ from sklearn.model_selection import KFold
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import confusion_matrix
-from sklearn.ensemble import GradientBoostingClassifier
+
 
 from dataloader import Dataloader
 from preprocessor import Preprocessor
 from models import random_forest, xgboost
+from feature_selector import FeatureSelector
 
 def conf_matrix(y_true, y_pred):
     
@@ -118,47 +118,7 @@ def smote_balancing(feature_set, label_set):
     
     return feature_set_balanced, label_set_balanced
 
-
-
-
-def lasso(x_train, y_train, x_val, x_test=None, n_fold=5, max_iters=50, thr=0.5):
-    from sklearn.linear_model import LassoCV
-    from sklearn.feature_selection import SelectFromModel
-    from sklearn.model_selection import GridSearchCV
-    from sklearn.pipeline import Pipeline
-    import numpy as np
-
-#     if grid_search:
-#         pipeline = Pipeline([
-#                      ('scaler',StandardScaler()),
-#                      ('model',Lasso())
-# ])
-#         search = GridSearchCV(pipeline,
-#                         {'model__alpha':np.arange(0.1,10,0.1)},
-#                         cv = 2, scoring="accuracy",verbose=3
-#                         )
-#         search.fit(features,labels)
-#         print(search.best_params_)
-
-    lasso = {}
-    cv_lasso = LassoCV(cv = n_fold, max_iter = max_iters, n_jobs = 1)
-    cv_lasso_model = SelectFromModel(cv_lasso, threshold = thr)
-    cv_lasso_model.fit(x_train, y_train)
-    #n_remained_lasso = cv_lasso_model.transform(x_train).shape[1]
-    remained_lasso_idx = cv_lasso_model.get_support(indices = True)
-    x_train_lasso = x_train[:,remained_lasso_idx] 
-    x_val_lasso = x_val[:,remained_lasso_idx]
-    lasso['train'] = x_train_lasso
-    lasso['val'] = x_val_lasso
-    
-    # if x_test is not None:
-    #     x_test_lasso = x_test[:,remained_lasso_idx]
-    #     lasso['test'] = x_test_lasso
-    lasso['feature_indices'] = remained_lasso_idx.tolist()
-    return lasso
-    
-
-def learning(clf, x_train, y_train, x_val, y_val, preprocessor, x_test=None):
+def learning(clf, x_train, y_train, x_val, y_val, preprocessor, selector, x_test=None):
     '''
     Parameters
     ----------
@@ -183,8 +143,10 @@ def learning(clf, x_train, y_train, x_val, y_val, preprocessor, x_test=None):
     
     summary = {}
 
-    x_train = preprocessor.preprocess_train(x_train)
-    x_val = preprocessor.preprocess_val(x_val)
+    x_train, x_val = preprocessor.preprocess_data_cross_val(x_train, x_val)
+
+    x_train, x_val = selector.select_data_cross_val(x_train, y_train, x_val, keyword = 'logistic_regression')
+
     x_train, y_train = smote_balancing(x_train, y_train)
 
 
@@ -216,8 +178,9 @@ def learning(clf, x_train, y_train, x_val, y_val, preprocessor, x_test=None):
     
     return summary, clf
     
-def test_data(x_test, y_test, preprocessor, clf):
+def test_data(x_test, y_test, preprocessor, selector, clf):
     x_test = preprocessor.preprocess_val(x_test)
+    x_test = selector.select_val(x_test)
     y_test_pred = clf.predict(x_test)
     y_test_pred_prob = clf.predict_proba(x_test)[:,1]
     
@@ -243,10 +206,12 @@ def main():
 
     # feature preprocessing
     preprocessor = Preprocessor()
-    
 
 
-    # feature selection and training
+    # feature selection 
+    selector = FeatureSelector()
+
+    # and training
     fold_num = 0
     kf = KFold(n_splits = 5, shuffle = False) 
     fold_stats = {}
@@ -268,7 +233,7 @@ def main():
         
         clf = xgboost(n_estimators=8, learning_rate=0.14, max_depth=1)
         # clf = random_forest(n_estimators=5, criterion='gini', max_depth=5, class_weight=None)
-        clf_summary, clf = learning(clf, x_train, y_train, x_val, y_val, preprocessor, x_test=None)
+        clf_summary, clf = learning(clf, x_train, y_train, x_val, y_val, preprocessor, selector, x_test=None)
         fold_stats[fold_name] = clf_summary
             
     mean_acc, mean_sen, mean_spc, mean_auc, _, _, _, _ = cross_val_stats(fold_stats)
@@ -278,7 +243,7 @@ def main():
     # testing on white patients
     test_dataloader = Dataloader(feature_path='/home/smriti/Downloads/csv_files/duke_mri_with_pcr_validation_white.csv')
     subject_ids_test, features_names_test, x_test, y_test= test_dataloader.load_dataset()
-    test_data(x_test, y_test, preprocessor, clf)
+    test_data(x_test, y_test, preprocessor, selector, clf)
 
     # testing on black patients
     # test_dataloader_black = Dataloader(feature_path='/home/smriti/Downloads/csv_files/duke_mri_with_pcr_validation_white.csv')
@@ -289,7 +254,7 @@ def main():
     # testing on other patients
     test_dataloader_mixed = Dataloader(feature_path='/home/smriti/Downloads/csv_files/duke_mri_with_pcr_validation_black.csv')
     subject_ids_test_mixed, features_names_test_mixed, x_test_mixed, y_test_mixed= test_dataloader_mixed.load_dataset()
-    test_data(x_test_mixed, y_test_mixed, preprocessor, clf)
+    test_data(x_test_mixed, y_test_mixed, preprocessor, selector, clf)
 
 main()
 
