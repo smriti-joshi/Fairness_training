@@ -2,6 +2,7 @@ from sklearn.svm import LinearSVC
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import ExtraTreesClassifier
 from sklearn.feature_selection import SelectFromModel
+from sklearn.preprocessing import StandardScaler
 import pandas as pd
 
 class FeatureSelector:
@@ -15,7 +16,8 @@ class FeatureSelector:
         self.labels = labels
 
     def logistic_regression(self):
-        clf = LogisticRegression().fit(self.features, self.labels)
+        scaler = StandardScaler().fit(self.features)
+        clf = LogisticRegression().fit(scaler.transform(self.features), self.labels)
         return clf
   
     def extra_trees(self):
@@ -27,6 +29,8 @@ class FeatureSelector:
         return clf
 
     def select_train(self, keyword):
+        # self.scaler = StandardScaler()
+
         if keyword == 'logistic_regression':
             clf = self.logistic_regression()
         elif keyword == 'extra_trees':

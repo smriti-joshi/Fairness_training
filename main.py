@@ -3,6 +3,7 @@ import time
 import numpy as np
 from imblearn.over_sampling import SMOTE
 from sklearn.model_selection import KFold
+import csv
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
@@ -146,7 +147,7 @@ def learning(clf, x_train, y_train, x_val, y_val, preprocessor, selector, x_test
     x_train, x_val = preprocessor.preprocess_data_cross_val(x_train, x_val)
 
     selector.set_features_and_labels(x_train, y_train)
-    x_train, x_val = selector.select_data_cross_val(x_val, keyword = 'svm')
+    x_train, x_val = selector.select_data_cross_val(x_val, keyword = 'logistic_regression')
 
     x_train, y_train = smote_balancing(x_train, y_train)
 
@@ -193,7 +194,7 @@ def test_data(x_test, y_test, preprocessor, selector, clf):
     confusion_matrix = conf_matrix(y_test, y_test_pred)
     accuracy, sensitivity, specificity = metrics(confusion_matrix)
 
-    print('the average AUC, Acc, Sens, Spec value: {}, {}, {}, {}'.format(roc_auc_test, accuracy, sensitivity, specificity))
+    return round(roc_auc_test, 4), round(accuracy, 4), round(sensitivity, 4), round(specificity, 4)
 
 def main():
 
@@ -240,22 +241,24 @@ def main():
     mean_acc, mean_sen, mean_spc, mean_auc, _, _, _, _ = cross_val_stats(fold_stats)
     print('the average AUC, Acc, Sens, Spec value of {} fold cross validation: {}, {}, {}, {}'.format(5, mean_auc, mean_acc, mean_sen, mean_spc))
 
-    print('White')
+    print('----------------------------------------------------------White---------------------------------------------------------------')
     # testing on white patients
     test_dataloader = Dataloader(feature_path='/home/smriti/Downloads/csv_files/duke_mri_with_pcr_validation_white.csv')
     subject_ids_test, features_names_test, x_test, y_test= test_dataloader.load_dataset()
-    test_data(x_test, y_test, preprocessor, selector, clf)
+    roc_auc_white, accuracy_white, sensitivity_white, specificity_white = test_data(x_test, y_test, preprocessor, selector, clf)
+    print('the average AUC, Acc, Sens, Spec value: {}, {}, {}, {}'.format(roc_auc_white, accuracy_white, sensitivity_white, specificity_white))
 
-    # testing on black patients
-    # test_dataloader_black = Dataloader(feature_path='/home/smriti/Downloads/csv_files/duke_mri_with_pcr_validation_white.csv')
-    # subject_ids_test_black, features_names_test_black, x_test_black, y_test_black= test_dataloader_black.load_dataset()
-    # test_data(x_test_black, y_test_black, preprocessor, clf)
-
-    print('Black')
+    print('----------------------------------------------------------Black---------------------------------------------------------------')
     # testing on other patients
     test_dataloader_mixed = Dataloader(feature_path='/home/smriti/Downloads/csv_files/duke_mri_with_pcr_validation_black.csv')
     subject_ids_test_mixed, features_names_test_mixed, x_test_mixed, y_test_mixed= test_dataloader_mixed.load_dataset()
-    test_data(x_test_mixed, y_test_mixed, preprocessor, selector, clf)
+    roc_auc_black, accuracy_black, sensitivity_black, specificity_black = test_data(x_test_mixed, y_test_mixed, preprocessor, selector, clf)
+    print('the average AUC, Acc, Sens, Spec value: {}, {}, {}, {}'.format(roc_auc_black, accuracy_black, sensitivity_black, specificity_black))
+
+    with open('temporary.csv', 'w') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow([round(mean_auc, 4), round(mean_acc, 4), round(mean_sen, 4), round(mean_spc, 4), roc_auc_white, accuracy_white, sensitivity_white, specificity_white, roc_auc_black, accuracy_black, sensitivity_black, specificity_black])
+        
 
 main()
 
